@@ -1,63 +1,39 @@
-
--- (a) List every duplicated partner_id
-SELECT partner_id, COUNT(*) AS duplicate_count
+-- Task 4(a): Identify duplicate partner records
+SELECT partner_id, COUNT(*) AS dup_count
 FROM partners_import
 GROUP BY partner_id
 HAVING COUNT(*) > 1;
 
-
--- (b) Create a clean partners table by removing exact duplicate rows
+-- Task 4(b): Deduplicate into clean partners table
 CREATE TABLE partners AS
-SELECT
-    partner_id,
-    city,
-    primary_category,
-    rating,
-    active,
-    days_since_onboarding
+SELECT partner_id, city, primary_category, rating, active, days_since_onboarding
 FROM partners_import
-GROUP BY
-    partner_id,
-    city,
-    primary_category,
-    rating,
-    active,
-    days_since_onboarding;
+GROUP BY partner_id, city, primary_category, rating, active, days_since_onboarding;
 
-
--- (a) INNER JOIN: Confirm every booking resolves to a real partner
-SELECT b.booking_id, b.partner_id
+-- Task 5(a): Confirm all bookings resolve to a real partner
+SELECT COUNT(*) AS matched_bookings
 FROM bookings b
-INNER JOIN partners p
-    ON b.partner_id = p.partner_id;
+INNER JOIN partners p ON b.partner_id = p.partner_id;
 
-
--- (b) LEFT JOIN: Find any category that has never received a booking
+-- Task 5(b): Categories with zero bookings
 SELECT c.category
 FROM categories c
-LEFT JOIN bookings b
-    ON c.category = b.category
+LEFT JOIN bookings b ON c.category = b.category
 WHERE b.booking_id IS NULL;
 
-
--- (c) LEFT JOIN: Find any partner that has never received a booking
-SELECT p.partner_id
+-- Task 5(c): Partners with zero bookings
+SELECT p.partner_id, p.city, p.primary_category
 FROM partners p
-LEFT JOIN bookings b
-    ON p.partner_id = b.partner_id
+LEFT JOIN bookings b ON p.partner_id = b.partner_id
 WHERE b.booking_id IS NULL;
 
-
--- (d) LEFT JOIN: Compare COUNT(*) and COUNT(b.booking_id) for each category
+-- Task 5(d): Category-level COUNT(*) vs COUNT(b.booking_id)
+-- COUNT(*) counts the joined row itself including the all-NULL unmatched row
+-- while COUNT(b.booking_id) only counts rows where a real booking matched.
 SELECT
     c.category,
-    COUNT(*) AS total_joined_rows,
-    COUNT(b.booking_id) AS booking_count
+    COUNT(*) AS total_rows,
+    COUNT(b.booking_id) AS matched_bookings
 FROM categories c
-LEFT JOIN bookings b
-    ON c.category = b.category
+LEFT JOIN bookings b ON c.category = b.category
 GROUP BY c.category;
-
--- For the zero-booking category, COUNT(*) counts the joined row itself,
--- including the all-NULL unmatched row, while COUNT(b.booking_id)
--- only counts rows where a real booking matched.
